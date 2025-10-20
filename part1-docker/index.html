@@ -198,59 +198,107 @@
     </div>
 
     <script>
-        // Fetch and display products from API
-        async function loadProducts() {
-            const container = document.getElementById('products-container');
+    // Get the correct API URL for Codespaces environment
+    function getApiBaseUrl() {
+        // If we're in Codespaces (githubpreview.dev), use the port 3000 URL
+        if (window.location.hostname.includes('githubpreview.dev')) {
+            return window.location.origin.replace('-8080', '-3000');
+        }
+        // For local development, use localhost
+        return 'http://localhost:3000';
+    }
+
+    // Fetch and display products from API
+    async function loadProducts() {
+        const container = document.getElementById('products-container');
+        const apiBaseUrl = getApiBaseUrl();
+        
+        try {
+            console.log('Fetching products from:', `${apiBaseUrl}/products`);
+            const response = await fetch(`${apiBaseUrl}/products`);
             
-            try {
-               const response = await fetch('/api/products');
-                
-                if (!response.ok) {
-                    throw new Error(`API error: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                
-                if (data.success && data.data.length > 0) {
-                    container.innerHTML = `
-                        <div class="products-grid">
-                            ${data.data.map(product => `
-                                <div class="product-card">
-                                    <div class="product-emoji">${product.image}</div>
-                                    <div class="product-name">${product.name}</div>
-                                    <div class="product-price">$${product.price}</div>
-                                    <div class="product-category">${product.category}</div>
-                                    <div class="product-description">${product.description}</div>
-                                    <button class="buy-button" onclick="buyProduct(${product.id})">
-                                        Add to Cart
-                                    </button>
-                                </div>
-                            `).join('')}
-                        </div>
-                        <div style="text-align: center; margin-top: 1rem; color: #666;">
-                            ${data.count} products loaded from API
-                        </div>
-                    `;
-                } else {
-                    container.innerHTML = '<div class="error">No products available</div>';
-                }
-            } catch (error) {
-                console.error('Error loading products:', error);
+            if (!response.ok) {
+                throw new Error(`API returned status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('API response:', data);
+            
+            if (data.success && data.data && data.data.length > 0) {
                 container.innerHTML = `
-                    <div class="error">
-                        Unable to load products from API: ${error.message}<br>
-                        Make sure the API service is running on port 3000
+                    <div class="products-grid">
+                        ${data.data.map(product => `
+                            <div class="product-card">
+                                <div class="product-emoji">${product.image || '📦'}</div>
+                                <div class="product-name">${product.name}</div>
+                                <div class="product-price">$${product.price}</div>
+                                <div class="product-category">${product.category}</div>
+                                <div class="product-description">${product.description}</div>
+                                <button class="buy-button" onclick="buyProduct(${product.id})">
+                                    Add to Cart
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div style="text-align: center; margin-top: 1rem; color: #666;">
+                        ✅ ${data.count} products loaded from API
                     </div>
                 `;
+            } else {
+                container.innerHTML = '<div class="error">No products available in API response</div>';
+            }
+        } catch (error) {
+            console.error('Error loading products:', error);
+            container.innerHTML = `
+                <div class="error">
+                    <strong>API Connection Issue:</strong> ${error.message}<br><br>
+                    <strong>Troubleshooting:</strong><br>
+                    - API Base URL: ${apiBaseUrl}<br>
+                    - Full URL: ${apiBaseUrl}/products<br>
+                    - Web URL: ${window.location.origin}<br><br>
+                    <div style="display: flex; gap: 10px; justify-content: center;">
+                        <button onclick="testAPI()" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            Test API Connection
+                        </button>
+                        <button onclick="loadProducts()" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            Retry Load Products
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // Test API connection
+    async function testAPI() {
+        const apiBaseUrl = getApiBaseUrl();
+        const endpoints = ['/health', '/products', '/'];
+        
+        for (const endpoint of endpoints) {
+            try {
+                const response = await fetch(`${apiBaseUrl}${endpoint}`);
+                const data = await response.json();
+                console.log(`✅ ${endpoint}:`, data);
+            } catch (error) {
+                console.log(`❌ ${endpoint}:`, error.message);
             }
         }
+        
+        // Test the specific products endpoint
+        try {
+            const response = await fetch(`${apiBaseUrl}/products`);
+            const data = await response.json();
+            alert(`✅ API Products Test:\n\nStatus: ${data.success}\nProducts Count: ${data.count}\nURL: ${apiBaseUrl}/products`);
+        } catch (error) {
+            alert(`❌ API Test Failed:\n\nError: ${error.message}\nURL: ${apiBaseUrl}/products`);
+        }
+    }
 
-        // Simple buy function
-        function buyProduct(productId) {
-            alert(`Product ${productId} added to cart!\n(This is a demo - no actual purchase will be made)`);
-            
-            // In a real app, you would call the orders API
-            fetch('http://localhost:3000/orders', {
+    // Simple buy function
+    async function buyProduct(productId) {
+        const apiBaseUrl = getApiBaseUrl();
+        try {
+            const response = await fetch(`${apiBaseUrl}/orders`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -259,18 +307,21 @@
                     productId: productId,
                     quantity: 1
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Order created:', data);
-            })
-            .catch(error => {
-                console.error('Order error:', error);
             });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert(`✅ Product added to cart!\n\nOrder ID: ${data.data.id}\nProduct: ${data.data.productName}\nQuantity: ${data.data.quantity}\nTotal: $${data.data.total}`);
+            } else {
+                alert(`❌ Failed: ${data.error}`);
+            }
+        } catch (error) {
+            alert(`❌ Order failed: ${error.message}`);
         }
+    }
 
-        // Load products when page loads
-        document.addEventListener('DOMContentLoaded', loadProducts);
-    </script>
+    // Load products when page loads
+    document.addEventListener('DOMContentLoaded', loadProducts);
+</script>
 </body>
 </html>
