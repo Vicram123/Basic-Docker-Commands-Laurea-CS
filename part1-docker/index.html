@@ -64,6 +64,69 @@
             color: #495057;
             margin-bottom: 0.5rem;
         }
+        
+        /* Products Grid */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .product-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+        }
+        .product-emoji {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .product-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        .product-price {
+            font-size: 1.5rem;
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        .product-category {
+            display: inline-block;
+            background: #e9ecef;
+            color: #495057;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+        }
+        .product-description {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        .buy-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.7rem 1.5rem;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+        .buy-button:hover {
+            background: #5a6fd8;
+        }
+        
         .status {
             background: #d4edda;
             color: #155724;
@@ -73,19 +136,19 @@
             font-weight: bold;
             margin-top: 2rem;
         }
-        .tech-stack {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin-top: 1rem;
-            flex-wrap: wrap;
-        }
-        .tech-item {
-            background: #667eea;
+        .loading {
+            text-align: center;
             color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.9rem;
+            font-size: 1.2rem;
+            padding: 2rem;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 5px;
+            text-align: center;
+            margin-top: 1rem;
         }
     </style>
 </head>
@@ -121,14 +184,11 @@
         </div>
 
         <div class="card">
-            <h2>Lab Progress</h2>
-            <p>This is part of Exercise 3: Image Building with Dockerfile</p>
-            <div class="tech-stack">
-                <span class="tech-item">Docker</span>
-                <span class="tech-item">Nginx</span>
-                <span class="tech-item">Alpine Linux</span>
-                <span class="tech-item">HTML5</span>
-                <span class="tech-item">CSS3</span>
+            <h2>🛍️ Our Products</h2>
+            <p>Products loaded from the Docker Lab API service:</p>
+            
+            <div id="products-container">
+                <div class="loading">Loading products from API...</div>
             </div>
         </div>
 
@@ -136,5 +196,81 @@
             ✅ Successfully built and deployed using Docker!
         </div>
     </div>
+
+    <script>
+        // Fetch and display products from API
+        async function loadProducts() {
+            const container = document.getElementById('products-container');
+            
+            try {
+                const response = await fetch('http://localhost:3000/products');
+                
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.data.length > 0) {
+                    container.innerHTML = `
+                        <div class="products-grid">
+                            ${data.data.map(product => `
+                                <div class="product-card">
+                                    <div class="product-emoji">${product.image}</div>
+                                    <div class="product-name">${product.name}</div>
+                                    <div class="product-price">$${product.price}</div>
+                                    <div class="product-category">${product.category}</div>
+                                    <div class="product-description">${product.description}</div>
+                                    <button class="buy-button" onclick="buyProduct(${product.id})">
+                                        Add to Cart
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div style="text-align: center; margin-top: 1rem; color: #666;">
+                            ${data.count} products loaded from API
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<div class="error">No products available</div>';
+                }
+            } catch (error) {
+                console.error('Error loading products:', error);
+                container.innerHTML = `
+                    <div class="error">
+                        Unable to load products from API: ${error.message}<br>
+                        Make sure the API service is running on port 3000
+                    </div>
+                `;
+            }
+        }
+
+        // Simple buy function
+        function buyProduct(productId) {
+            alert(`Product ${productId} added to cart!\n(This is a demo - no actual purchase will be made)`);
+            
+            // In a real app, you would call the orders API
+            fetch('http://localhost:3000/orders', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    productId: productId,
+                    quantity: 1
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Order created:', data);
+            })
+            .catch(error => {
+                console.error('Order error:', error);
+            });
+        }
+
+        // Load products when page loads
+        document.addEventListener('DOMContentLoaded', loadProducts);
+    </script>
 </body>
 </html>
