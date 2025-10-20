@@ -1,0 +1,16 @@
+{
+  "name": "docker-lab-api",
+  "version": "1.0.0",
+  "description": "API service for Docker lab exercises",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "keywords": ["docker", "lab", "api", "express"],
+  "author": "Student",
+  "license": "MIT"
+}
